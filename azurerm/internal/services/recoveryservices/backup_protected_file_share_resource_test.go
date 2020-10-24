@@ -153,6 +153,9 @@ func testCheckAzureRMBackupProtectedFileShareExists(resourceName string) resourc
 		}
 
 		id, err := azure.ParseAzureResourceID(rs.Primary.ID)
+		if err != nil {
+			return fmt.Errorf("[ERROR] Unable to parse resource id '%s': %+v", rs.Primary.ID, err)
+		}
 		fileShareSystemName := id.Path["protectedItems"]
 		vaultName := rs.Primary.Attributes["recovery_vault_name"]
 		storageID := rs.Primary.Attributes["source_storage_account_id"]
