@@ -152,6 +152,8 @@ func testCheckAzureRMBackupProtectedFileShareExists(resourceName string) resourc
 			return fmt.Errorf("Bad: no resource group found in state for Azure Backup Protected File Share: %q", resourceName)
 		}
 
+		id, err := azure.ParseAzureResourceID(rs.Primary.ID)
+		fileShareSystemName := id.Path["protectedItems"]
 		vaultName := rs.Primary.Attributes["recovery_vault_name"]
 		storageID := rs.Primary.Attributes["source_storage_account_id"]
 		fileShareName := rs.Primary.Attributes["source_file_share_name"]
@@ -165,13 +167,12 @@ func testCheckAzureRMBackupProtectedFileShareExists(resourceName string) resourc
 			return fmt.Errorf("[ERROR] parsed source_storage_account_id '%s' doesn't contain 'storageAccounts'", storageID)
 		}
 
-		protectedItemName := fmt.Sprintf("AzureFileShare;%s", fileShareName)
 		containerName := fmt.Sprintf("StorageContainer;storage;%s;%s", parsedStorageID.ResourceGroup, accountName)
 
-		resp, err := client.Get(ctx, vaultName, resourceGroup, "Azure", containerName, protectedItemName, "")
+		resp, err := client.Get(ctx, vaultName, resourceGroup, "Azure", containerName, fileShareSystemName, "")
 		if err != nil {
 			if utils.ResponseWasNotFound(resp.Response) {
-				return fmt.Errorf("Azure Backup Protected File Share %q (resource group: %q) was not found: %+v", protectedItemName, resourceGroup, err)
+				return fmt.Errorf("Azure Backup Protected File Share %q (resource group: %q) was not found: %+v", fileShareName, resourceGroup, err)
 			}
 
 			return fmt.Errorf("Bad: Get on recoveryServicesVaultsClient: %+v", err)
