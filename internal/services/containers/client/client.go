@@ -4,6 +4,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/services/containerinstance/mgmt/2019-12-01/containerinstance"
 	legacy "github.com/Azure/azure-sdk-for-go/services/containerservice/mgmt/2019-08-01/containerservice"
 	"github.com/Azure/azure-sdk-for-go/services/containerservice/mgmt/2021-05-01/containerservice"
+	"github.com/Azure/azure-sdk-for-go/services/hybridkubernetes/mgmt/2021-03-01/hybridkubernetes"
 	"github.com/Azure/azure-sdk-for-go/services/preview/containerregistry/mgmt/2020-11-01-preview/containerregistry"
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/common"
@@ -20,6 +21,7 @@ type Client struct {
 	WebhooksClient                  *containerregistry.WebhooksClient
 	TokensClient                    *containerregistry.TokensClient
 	ScopeMapsClient                 *containerregistry.ScopeMapsClient
+	ConnectedClusterClient          *hybridkubernetes.ConnectedClusterClient
 
 	Environment azure.Environment
 }
@@ -56,6 +58,9 @@ func NewClient(o *common.ClientOptions) *Client {
 	servicesClient := legacy.NewContainerServicesClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
 	o.ConfigureClient(&servicesClient.Client, o.ResourceManagerAuthorizer)
 
+	connectedClusterClient := hybridkubernetes.NewConnectedClusterClientWithBaseURI(o.ResourceManagerEndpoint, o.SubscriptionId)
+	o.ConfigureClient(&connectedClusterClient.Client, o.ResourceManagerAuthorizer)
+
 	return &Client{
 		AgentPoolsClient:                &agentPoolsClient,
 		KubernetesClustersClient:        &kubernetesClustersClient,
@@ -68,5 +73,6 @@ func NewClient(o *common.ClientOptions) *Client {
 		Environment:                     o.Environment,
 		TokensClient:                    &tokensClient,
 		ScopeMapsClient:                 &scopeMapsClient,
+		ConnectedClusterClient:          &connectedClusterClient,
 	}
 }
