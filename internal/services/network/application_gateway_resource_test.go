@@ -361,6 +361,11 @@ func TestAccApplicationGateway_customErrorConfigurationsUpdate(t *testing.T) {
 			Config: r.httpCustomErrorConfigurations(data),
 			Check: acceptance.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
+				check.That(data.ResourceName).Key("http_listener.0.custom_error_configuration.#").HasValue("2"),
+				check.That(data.ResourceName).Key("http_listener.0.custom_error_configuration.0.status_code").IsSet(),
+				check.That(data.ResourceName).Key("http_listener.0.custom_error_configuration.0.custom_error_page_url").IsSet(),
+				check.That(data.ResourceName).Key("http_listener.0.custom_error_configuration.1.status_code").IsSet(),
+				check.That(data.ResourceName).Key("http_listener.0.custom_error_configuration.1.custom_error_page_url").IsSet(),
 			),
 		},
 		data.ImportStep(),
@@ -368,6 +373,7 @@ func TestAccApplicationGateway_customErrorConfigurationsUpdate(t *testing.T) {
 			Config: r.customErrorConfigurationsBase(data),
 			Check: acceptance.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
+				check.That(data.ResourceName).Key("http_listener.0.custom_error_configuration.#").HasValue("0"),
 			),
 		},
 		data.ImportStep(),
@@ -375,6 +381,16 @@ func TestAccApplicationGateway_customErrorConfigurationsUpdate(t *testing.T) {
 			Config: r.customErrorConfigurations(data),
 			Check: acceptance.ComposeTestCheckFunc(
 				check.That(data.ResourceName).ExistsInAzure(r),
+				check.That(data.ResourceName).Key("http_listener.0.custom_error_configuration.#").HasValue("2"),
+				check.That(data.ResourceName).Key("http_listener.0.custom_error_configuration.0.status_code").IsSet(),
+				check.That(data.ResourceName).Key("http_listener.0.custom_error_configuration.0.custom_error_page_url").IsSet(),
+				check.That(data.ResourceName).Key("http_listener.0.custom_error_configuration.1.status_code").IsSet(),
+				check.That(data.ResourceName).Key("http_listener.0.custom_error_configuration.1.custom_error_page_url").IsSet(),
+				check.That(data.ResourceName).Key("custom_error_configuration.#").HasValue("2"),
+				check.That(data.ResourceName).Key("custom_error_configuration.0.status_code").IsSet(),
+				check.That(data.ResourceName).Key("custom_error_configuration.0.custom_error_page_url").IsSet(),
+				check.That(data.ResourceName).Key("custom_error_configuration.1.status_code").IsSet(),
+				check.That(data.ResourceName).Key("custom_error_configuration.1.custom_error_page_url").IsSet(),
 			),
 		},
 		data.ImportStep(),
@@ -5143,7 +5159,15 @@ resource "azurerm_public_ip" "test" {
   resource_group_name = azurerm_resource_group.test.name
   allocation_method   = "Dynamic"
 }
-`, data.RandomInteger, data.Locations.Primary, data.RandomInteger, data.RandomInteger, data.RandomInteger)
+
+resource "azurerm_public_ip" "test_standard" {
+  name                = "acctest-pubip-%d-standard"
+  location            = azurerm_resource_group.test.location
+  resource_group_name = azurerm_resource_group.test.name
+  sku                 = "Standard"
+  allocation_method   = "Static"
+}
+`, data.RandomInteger, data.Locations.Primary, data.RandomInteger, data.RandomInteger, data.RandomInteger, data.RandomInteger)
 }
 
 func (r ApplicationGatewayResource) customErrorConfigurationsBase(data acceptance.TestData) string {
@@ -5168,8 +5192,8 @@ resource "azurerm_application_gateway" "test" {
   location            = azurerm_resource_group.test.location
 
   sku {
-    name     = "Standard_Small"
-    tier     = "Standard"
+    name     = "WAF_v2"
+    tier     = "WAF_v2"
     capacity = 2
   }
 
@@ -5185,7 +5209,7 @@ resource "azurerm_application_gateway" "test" {
 
   frontend_ip_configuration {
     name                 = local.frontend_ip_configuration_name
-    public_ip_address_id = azurerm_public_ip.test.id
+    public_ip_address_id = azurerm_public_ip.test_standard.id
   }
 
   backend_address_pool {
@@ -5240,8 +5264,8 @@ resource "azurerm_application_gateway" "test" {
   location            = azurerm_resource_group.test.location
 
   sku {
-    name     = "Standard_Small"
-    tier     = "Standard"
+    name     = "WAF_v2"
+    tier     = "WAF_v2"
     capacity = 2
   }
 
@@ -5257,7 +5281,7 @@ resource "azurerm_application_gateway" "test" {
 
   frontend_ip_configuration {
     name                 = local.frontend_ip_configuration_name
-    public_ip_address_id = azurerm_public_ip.test.id
+    public_ip_address_id = azurerm_public_ip.test_standard.id
   }
 
   backend_address_pool {
@@ -5322,8 +5346,8 @@ resource "azurerm_application_gateway" "test" {
   location            = azurerm_resource_group.test.location
 
   sku {
-    name     = "Standard_Small"
-    tier     = "Standard"
+    name     = "WAF_v2"
+    tier     = "WAF_v2"
     capacity = 2
   }
 
@@ -5339,7 +5363,7 @@ resource "azurerm_application_gateway" "test" {
 
   frontend_ip_configuration {
     name                 = local.frontend_ip_configuration_name
-    public_ip_address_id = azurerm_public_ip.test.id
+    public_ip_address_id = azurerm_public_ip.test_standard.id
   }
 
   backend_address_pool {
