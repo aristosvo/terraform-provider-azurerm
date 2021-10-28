@@ -8830,8 +8830,6 @@ func (srdlr SQLRoleDefinitionListResult) MarshalJSON() ([]byte, error) {
 type SQLRoleDefinitionResource struct {
 	// RoleName - A user-friendly name for the Role Definition. Must be unique for the database account.
 	RoleName *string `json:"roleName,omitempty"`
-	// Type - Indicates whether the Role Definition was built-in or user created. Possible values include: 'RoleDefinitionTypeBuiltInRole', 'RoleDefinitionTypeCustomRole'
-	Type RoleDefinitionType `json:"type,omitempty"`
 	// AssignableScopes - A set of fully qualified Scopes at or below which Role Assignments may be created using this Role Definition. This will allow application of this Role Definition on the entire database account or any underlying Database / Collection. Must have at least one element. Scopes higher than Database account are not enforceable as assignable Scopes. Note that resources referenced in assignable Scopes need not exist.
 	AssignableScopes *[]string `json:"assignableScopes,omitempty"`
 	// Permissions - The set of operations allowed through this Role Definition.
