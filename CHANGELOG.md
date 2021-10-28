@@ -3,8 +3,10 @@
 FEATURES:
 
 * **New Data Source:** `azurerm_eventgrid_system_topic` [GH-13851]
+* **New Data Source:** `azurerm_billing_mpa_account_scope` [GH-13723]
+* **New Resource:** `azurerm_iot_time_series_insights_event_source_eventhub` [GH-13917]
 * **New Resource:** `azurerm_stream_analytics_reference_input_mssql` [GH-13822]
-* **New Resource:** `sentinel_automation_rule` [GH-11502]
+* **New Resource:** `azurerm_sentinel_automation_rule` [GH-11502]
 * **New Resource:** `azurerm_stream_analytics_output_table` [GH-13854]
 
 IMPROVEMENTS:
@@ -12,18 +14,25 @@ IMPROVEMENTS:
 * upgrading `mysql` to API Version `2021-05-01` [GH-13818]
 * `azurerm_firewall_application_rule_collection` - the `port` property is now required instead of optional [GH-13869]
 * `azurerm_kubernetes_cluster` - expose the `portal_fqdn` attribute [GH-13887]
-* `azurerm_virtual_hub` - support for the `default_route_table_id` property [GH-13840]
+* `azurerm_linux_virtual_machine_scale_set` - added feature for `scale_to_zero_before_deletion`[GH-13635]
+* `azurerm_managed_disk` - support for the `trusted_launch_enabled` property [GH-13849]
 * `azurerm_servicebus_queue` - support for the `max_message_size_in_kilobytes` property [GH-13762]
 * `azurerm_servicebus_topic` - support for the `max_message_size_in_kilobytes` property [GH-13762]
 * `azurerm_servicebus_namespace_network_rule_set` - support for the `trusted_services_allowed` property [GH-13853]
 * `azurerm_windows_virtual_machine_scale_set` - added feature for `scale_to_zero_before_deletion`[GH-13635]
-* `azurerm_linux_virtual_machine_scale_set` - added feature for `scale_to_zero_before_deletion`[GH-13635]
+* `azurerm_synapse_workspace` - support for the `linking_allowed_for_aad_tenant_ids`, `compute_subnet_id`, `public_network_access_enabled`, `purview_id`, and `last_commit_id` properties  [GH-13817]
+* `azurerm_vpn_gateway` - support for the `routing_preference` property [GH-13882]
+* `azurerm_virtual_hub` - support for the `default_route_table_id` property [GH-13840]
 
 BUG FIXES:
 
+* `azurerm_automation_schedule_resource` - allow `Etc/UTC` for the `timezone` property [GH-13906]
 * `azurerm_app_configuration_key` - now supports forward slashes in the `key` [GH-13859]
+* `azurerm_application_gateway` - prevent multiple `ssl_policy` blocks [GH-13929]
+* `azurerm_cognitive_account` - will now handle the unexpected state `Accepted` when waiting for creats [GH-13925]
 * `azurerm_data_factory` - can now read global parameter values [GH-13519]
 * `azurerm_firewall_policy` - will now correctly import [GH-13862]
+* `azurerm_firewall_policy` - changing the identity will no longer create a new resource [GH-13904]
 
 ## 2.82.0 (October 21, 2021)
 
