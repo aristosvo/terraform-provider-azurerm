@@ -177,6 +177,41 @@ func resourceArmSqlMiServer() *schema.Resource {
 
 			"identity": managedInstanceIdentity{}.Schema(),
 
+			"azuread_administrator": {
+				Type:     pluginsdk.TypeList,
+				Optional: true,
+				MaxItems: 1,
+				MinItems: 1,
+				Elem: &pluginsdk.Resource{
+					Schema: map[string]*pluginsdk.Schema{
+						"login_username": {
+							Type:         pluginsdk.TypeString,
+							Required:     true,
+							ValidateFunc: validation.StringIsNotEmpty,
+						},
+
+						"object_id": {
+							Type:         pluginsdk.TypeString,
+							Required:     true,
+							ValidateFunc: validation.IsUUID,
+						},
+
+						"tenant_id": {
+							Type:         pluginsdk.TypeString,
+							Optional:     true,
+							Computed:     true,
+							ValidateFunc: validation.IsUUID,
+						},
+
+						"azuread_authentication_only": {
+							Type:     pluginsdk.TypeBool,
+							Optional: true,
+							Computed: true,
+						},
+					},
+				},
+			},
+
 			"tags": tags.Schema(),
 		},
 
@@ -191,6 +226,8 @@ func resourceArmSqlMiServer() *schema.Resource {
 
 func resourceArmSqlMiServerCreateUpdate(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*clients.Client).Sql.ManagedInstancesClient
+	adminClient := meta.(*clients.Client).Sql.ManagedInstanceAdministratorsClient
+	aadOnlyAuthentictionsClient := meta.(*clients.Client).Sql.ManagedInstanceAzureADOnlyAuthenticationsClient
 	subscriptionId := meta.(*clients.Client).Account.SubscriptionId
 	ctx, cancel := timeouts.ForCreateUpdate(meta.(*clients.Client).StopContext, d)
 	defer cancel()
@@ -237,6 +274,10 @@ func resourceArmSqlMiServerCreateUpdate(d *schema.ResourceData, meta interface{}
 		},
 	}
 
+	if azureADAdministrator, ok := d.GetOk("azuread_administrator"); d.IsNewResource() && ok {
+		parameters.ManagedInstanceProperties.Administrators = expandMsSqlInstanceAdministrators(azureADAdministrator.([]interface{}))
+	}
+
 	identity, err := expandManagedInstanceIdentity(d.Get("identity").([]interface{}))
 	if err != nil {
 		return fmt.Errorf(`expanding "identity": %v`, err)
@@ -254,6 +295,54 @@ func resourceArmSqlMiServerCreateUpdate(d *schema.ResourceData, meta interface{}
 		}
 
 		return err
+	}
+
+	if d.HasChange("azuread_administrator") && !d.IsNewResource() {
+		aadOnlyDeleteFuture, err := aadOnlyAuthentictionsClient.Delete(ctx, id.ResourceGroup, id.Name)
+		if err != nil {
+			if aadOnlyDeleteFuture.Response() == nil || aadOnlyDeleteFuture.Response().StatusCode != http.StatusBadRequest {
+				return fmt.Errorf("deleting AD Only Authentications %s: %+v", id.String(), err)
+			}
+			log.Printf("[INFO] AD Only Authentication is not removed as AD Admin is not set for %s: %+v", id.String(), err)
+		} else if err = aadOnlyDeleteFuture.WaitForCompletionRef(ctx, adminClient.Client); err != nil {
+			return fmt.Errorf("waiting for deletion of AD Only Authentications %s: %+v", id.String(), err)
+		}
+
+		if adminParams := expandMsSqlInstanceAdministrator(d.Get("azuread_administrator").([]interface{})); adminParams != nil {
+			adminFuture, err := adminClient.CreateOrUpdate(ctx, id.ResourceGroup, id.Name, *adminParams)
+			if err != nil {
+				return fmt.Errorf("creating AAD admin %s: %+v", id.String(), err)
+			}
+
+			if err = adminFuture.WaitForCompletionRef(ctx, adminClient.Client); err != nil {
+				return fmt.Errorf("waiting for creation of AAD admin %s: %+v", id.String(), err)
+			}
+
+			if aadOnlyAuthentictionsEnabled := expandMsSqlInstanceAADOnlyAuthentictions(d.Get("azuread_administrator").([]interface{})); aadOnlyAuthentictionsEnabled {
+				aadOnlyAuthentictionsParams := sql.ManagedInstanceAzureADOnlyAuthentication{
+					ManagedInstanceAzureADOnlyAuthProperties: &sql.ManagedInstanceAzureADOnlyAuthProperties{
+						AzureADOnlyAuthentication: utils.Bool(aadOnlyAuthentictionsEnabled),
+					},
+				}
+				aadOnlyEnabledFuture, err := aadOnlyAuthentictionsClient.CreateOrUpdate(ctx, id.ResourceGroup, id.Name, aadOnlyAuthentictionsParams)
+				if err != nil {
+					return fmt.Errorf("setting AAD only authentication for %s: %+v", id.String(), err)
+				}
+
+				if err = aadOnlyEnabledFuture.WaitForCompletionRef(ctx, adminClient.Client); err != nil {
+					return fmt.Errorf("waiting for setting of AAD only authentication for %s: %+v", id.String(), err)
+				}
+			}
+		} else {
+			adminDelFuture, err := adminClient.Delete(ctx, id.ResourceGroup, id.Name)
+			if err != nil {
+				return fmt.Errorf("deleting AAD admin  %s: %+v", id.String(), err)
+			}
+
+			if err = adminDelFuture.WaitForCompletionRef(ctx, adminClient.Client); err != nil {
+				return fmt.Errorf("waiting for deletion of AAD admin %s: %+v", id.String(), err)
+			}
+		}
 	}
 
 	d.SetId(id.ID())
@@ -391,4 +480,90 @@ func flattenManagedInstanceIdentity(input *sql.ResourceIdentity) []interface{} {
 		TenantId:    tenantId,
 	}
 	return managedInstanceIdentity{}.Flatten(config)
+}
+
+func expandMsSqlInstanceAdministrator(input []interface{}) *sql.ManagedInstanceAdministrator {
+	if len(input) == 0 || input[0] == nil {
+		return nil
+	}
+
+	admin := input[0].(map[string]interface{})
+	sid, _ := uuid.FromString(admin["object_id"].(string))
+
+	adminParams := sql.ManagedInstanceAdministrator{
+		ManagedInstanceAdministratorProperties: &sql.ManagedInstanceAdministratorProperties{
+			AdministratorType: utils.String("ActiveDirectory"),
+			Login:             utils.String(admin["login_username"].(string)),
+			Sid:               &sid,
+		},
+	}
+
+	if v, ok := admin["tenant_id"]; ok && v != "" {
+		tid, _ := uuid.FromString(v.(string))
+		adminParams.TenantID = &tid
+	}
+
+	return &adminParams
+}
+
+func expandMsSqlInstanceAdministrators(input []interface{}) *sql.ManagedInstanceExternalAdministrator {
+	if len(input) == 0 || input[0] == nil {
+		return nil
+	}
+
+	admin := input[0].(map[string]interface{})
+	sid, _ := uuid.FromString(admin["object_id"].(string))
+
+	adminParams := sql.ManagedInstanceExternalAdministrator{
+		AdministratorType: sql.AdministratorTypeActiveDirectory,
+		Login:             utils.String(admin["login_username"].(string)),
+		Sid:               &sid,
+	}
+
+	if v, ok := admin["tenant_id"]; ok && v != "" {
+		tid, _ := uuid.FromString(v.(string))
+		adminParams.TenantID = &tid
+	}
+
+	return &adminParams
+}
+
+func flatternMsSqlInstanceAdministrators(admin sql.ManagedInstanceExternalAdministrator) []interface{} {
+	var login, sid, tid string
+	if admin.Login != nil {
+		login = *admin.Login
+	}
+
+	if admin.Sid != nil {
+		sid = admin.Sid.String()
+	}
+
+	if admin.TenantID != nil {
+		tid = admin.TenantID.String()
+	}
+
+	var aadOnlyAuthentictionsEnabled bool
+	if admin.AzureADOnlyAuthentication != nil {
+		aadOnlyAuthentictionsEnabled = *admin.AzureADOnlyAuthentication
+	}
+
+	return []interface{}{
+		map[string]interface{}{
+			"login_username":              login,
+			"object_id":                   sid,
+			"tenant_id":                   tid,
+			"azuread_authentication_only": aadOnlyAuthentictionsEnabled,
+		},
+	}
+}
+
+func expandMsSqlInstanceAADOnlyAuthentictions(input []interface{}) bool {
+	if len(input) == 0 || input[0] == nil {
+		return false
+	}
+	admin := input[0].(map[string]interface{})
+	if v, ok := admin["azuread_authentication_only"]; ok && v != nil {
+		return v.(bool)
+	}
+	return false
 }

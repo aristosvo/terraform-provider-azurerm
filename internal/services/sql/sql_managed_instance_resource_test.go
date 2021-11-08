@@ -56,6 +56,40 @@ func TestAccAzureRMSqlMiServer_identity(t *testing.T) {
 	})
 }
 
+func TestAccAzureRMSqlMiServer_adAuthentication(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_sql_managed_instance", "test")
+	r := SqlManagedInstanceResource{}
+
+	data.ResourceTest(t, r, []resource.TestStep{
+		{
+			Config: r.basic(data),
+			Check: resource.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+				check.That(data.ResourceName).Key("identity.#").HasValue("0"),
+			),
+		},
+		data.ImportStep("administrator_login_password"),
+		{
+			Config: r.adAdminPrep(data),
+			Check: resource.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+				check.That(data.ResourceName).Key("identity.#").HasValue("1"),
+				check.That(data.ResourceName).Key("identity.0.type").HasValue("SystemAssigned"),
+			),
+		},
+		data.ImportStep("administrator_login_password"),
+		{
+			Config: r.adAdminOnly(data),
+			Check: resource.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+				check.That(data.ResourceName).Key("identity.#").HasValue("1"),
+				check.That(data.ResourceName).Key("identity.0.type").HasValue("SystemAssigned"),
+			),
+		},
+		data.ImportStep("administrator_login_password"),
+	})
+}
+
 func TestAccAzureRMSqlMiServer_update(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_sql_managed_instance", "test")
 	r := SqlManagedInstanceResource{}
@@ -218,6 +252,104 @@ resource "azurerm_sql_managed_instance" "test" {
     environment = "staging"
     database    = "test"
   }
+}
+`, r.template(data), data.RandomInteger)
+}
+
+func (r SqlManagedInstanceResource) adAdminPrep(data acceptance.TestData) string {
+	return fmt.Sprintf(`
+%s
+
+resource "azuread_directory_role" "reader" {
+  display_name = "Directory Readers"
+}
+
+resource "azurerm_sql_managed_instance" "test" {
+  name                         = "acctestsqlserver%d"
+  resource_group_name          = azurerm_resource_group.test.name
+  location                     = azurerm_resource_group.test.location
+  administrator_login          = "mradministrator"
+  administrator_login_password = "thisIsDog11"
+  license_type                 = "BasePrice"
+  subnet_id                    = azurerm_subnet.test.id
+  sku_name                     = "GP_Gen5"
+  vcores                       = 4
+  storage_size_in_gb           = 32
+
+  depends_on = [
+    azurerm_subnet_network_security_group_association.test,
+    azurerm_subnet_route_table_association.test,
+    azuread_directory_role_member.test,
+  ]
+
+  identity {
+    type = "SystemAssigned"
+  }
+
+  tags = {
+    environment = "staging"
+    database    = "test"
+  }
+}
+
+resource "azuread_directory_role_member" "test" {
+  role_object_id   = azuread_directory_role.reader.object_id
+  member_object_id = azurerm_sql_managed_instance.test.identity.0.principal_id
+}
+`, r.template(data), data.RandomInteger)
+}
+
+func (r SqlManagedInstanceResource) adAdminOnly(data acceptance.TestData) string {
+	return fmt.Sprintf(`
+%s
+
+resource "azuread_directory_role" "reader" {
+  display_name = "Directory Readers"
+}
+
+data "azurerm_client_config" "current" {}
+
+data "azuread_service_principal" "test" {
+  object_id = data.azurerm_client_config.current.object_id
+}
+
+resource "azurerm_sql_managed_instance" "test" {
+  name                         = "acctestsqlserver%d"
+  resource_group_name          = azurerm_resource_group.test.name
+  location                     = azurerm_resource_group.test.location
+  administrator_login          = "mradministrator"
+  administrator_login_password = "thisIsDog11"
+  license_type                 = "BasePrice"
+  subnet_id                    = azurerm_subnet.test.id
+  sku_name                     = "GP_Gen5"
+  vcores                       = 4
+  storage_size_in_gb           = 32
+
+  depends_on = [
+    azurerm_subnet_network_security_group_association.test,
+    azurerm_subnet_route_table_association.test,
+    azuread_directory_role_member.test,
+  ]
+
+  identity {
+    type = "SystemAssigned"
+  }
+
+  azuread_administrator {
+    login_username              = data.azuread_service_principal.test.display_name
+    object_id                   = data.azurerm_client_config.current.client_id
+    azuread_authentication_only = true
+  }
+
+  tags = {
+    environment = "staging"
+    database    = "test"
+  }
+}
+
+resource "azuread_directory_role_member" "test" {
+  role_object_id   = azuread_directory_role.reader.object_id
+  member_object_id = azurerm_sql_managed_instance.test.identity.0.principal_id
 }
 `, r.template(data), data.RandomInteger)
 }
