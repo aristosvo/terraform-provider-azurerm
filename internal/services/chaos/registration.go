@@ -2,13 +2,11 @@ package chaos
 
 import (
 	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
-	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 )
 
-var _ sdk.UntypedServiceRegistration = Registration{}
+var _ sdk.TypedServiceRegistration = Registration{}
 
-type Registration struct {
-}
+type Registration struct{}
 
 func (r Registration) Name() string {
 	return "Chaos Studio"
@@ -20,10 +18,14 @@ func (r Registration) WebsiteCategories() []string {
 	}
 }
 
-func (r Registration) SupportedDataSources() map[string]*pluginsdk.Resource {
-	return map[string]*pluginsdk.Resource{}
+func (r Registration) DataSources() []sdk.DataSource {
+	return []sdk.DataSource{}
 }
 
-func (r Registration) SupportedResources() map[string]*pluginsdk.Resource {
-	return map[string]*pluginsdk.Resource{}
+func (r Registration) Resources() []sdk.Resource {
+	resources := []sdk.Resource{
+		TargetResource{},
+	}
+
+	return resources
 }

@@ -22,6 +22,7 @@ import (
 	blueprints "github.com/hashicorp/terraform-provider-azurerm/internal/services/blueprints/client"
 	bot "github.com/hashicorp/terraform-provider-azurerm/internal/services/bot/client"
 	cdn "github.com/hashicorp/terraform-provider-azurerm/internal/services/cdn/client"
+	chaos "github.com/hashicorp/terraform-provider-azurerm/internal/services/chaos/client"
 	cognitiveServices "github.com/hashicorp/terraform-provider-azurerm/internal/services/cognitive/client"
 	communication "github.com/hashicorp/terraform-provider-azurerm/internal/services/communication/client"
 	compute "github.com/hashicorp/terraform-provider-azurerm/internal/services/compute/client"
@@ -132,6 +133,7 @@ type Client struct {
 	Blueprints            *blueprints.Client
 	Bot                   *bot.Client
 	Cdn                   *cdn.Client
+	Chaos                 *chaos.Client
 	Cognitive             *cognitiveServices.Client
 	Communication         *communication.Client
 	Compute               *compute.Client
@@ -244,6 +246,7 @@ func (client *Client) Build(ctx context.Context, o *common.ClientOptions) error 
 	client.Blueprints = blueprints.NewClient(o)
 	client.Bot = bot.NewClient(o)
 	client.Cdn = cdn.NewClient(o)
+	client.Chaos = chaos.NewClient(o)
 	client.Cognitive = cognitiveServices.NewClient(o)
 	client.Communication = communication.NewClient(o)
 	client.Compute = compute.NewClient(o)
