@@ -5,7 +5,7 @@ AZURERM_LOCATION="${GIT_REPO_LOCATION}/terraform-provider-azurerm"
 SDK_LOCATION="${AZURERM_LOCATION}/internal/services/keyvault/sdk/v7.3/keyvault"
 
 mkdir -p "${SDK_LOCATION}"
-cp "${SDK_LOCATION}/../autorest.md" readme.go.md 
+cp "${SDK_LOCATION}/../autorest.md" "${DATAPLANE_LOCATION}"/readme.go.md
 cd "${DATAPLANE_LOCATION}/" || exit 1
 
 # Conflict between ActionType enum and ActionType type..
