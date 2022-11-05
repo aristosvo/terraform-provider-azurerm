@@ -110,6 +110,11 @@ func resourceKeyVaultCertificate() *pluginsdk.Resource {
 										Required: true,
 										ForceNew: true,
 									},
+									"certificate_type": {
+										Type:     pluginsdk.TypeString,
+										Optional: true,
+										ForceNew: true,
+									},
 								},
 							},
 						},
@@ -790,7 +795,8 @@ func expandKeyVaultCertificatePolicy(d *pluginsdk.ResourceData) (*keyvault.Certi
 	issuers := policyRaw["issuer_parameters"].([]interface{})
 	issuer := issuers[0].(map[string]interface{})
 	policy.IssuerParameters = &keyvault.IssuerParameters{
-		Name: utils.String(issuer["name"].(string)),
+		Name:            utils.String(issuer["name"].(string)),
+		CertificateType: utils.String(issuer["certificate_type"].(string)),
 	}
 
 	properties := policyRaw["key_properties"].([]interface{})
@@ -930,6 +936,7 @@ func flattenKeyVaultCertificatePolicy(input *keyvault.CertificatePolicy, certDat
 	if params := input.IssuerParameters; params != nil {
 		issuerParams := make(map[string]interface{})
 		issuerParams["name"] = *params.Name
+		issuerParams["certificate_type"] = *params.CertificateType
 		policy["issuer_parameters"] = []interface{}{issuerParams}
 	}
 
