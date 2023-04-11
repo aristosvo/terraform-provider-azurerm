@@ -1009,6 +1009,7 @@ resource "azurerm_mssql_database" "test" {
   auto_pause_delay_in_minutes = 70
   min_capacity                = 0.75
   sku_name                    = "GP_S_Gen5_2"
+	license_type                = "None"
 }
 `, r.template(data), data.RandomInteger)
 }

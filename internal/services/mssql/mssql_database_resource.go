@@ -121,8 +121,8 @@ func resourceMsSqlDatabaseCreateUpdate(d *pluginsdk.ResourceData, meta interface
 
 	log.Printf("[INFO] preparing arguments for MsSql Database creation.")
 
-	if strings.HasPrefix(d.Get("sku_name").(string), "GP_S_") && d.Get("license_type").(string) != "" {
-		return fmt.Errorf("serverless databases do not support license type")
+	if strings.HasPrefix(d.Get("sku_name").(string), "GP_S_") && (d.Get("license_type").(string) != "" || d.Get("license_type").(string) != "None") {
+		return fmt.Errorf("serverless databases do not support license type '%s'", d.Get("license_type").(string))
 	}
 
 	name := d.Get("name").(string)
@@ -900,6 +900,7 @@ func resourceMsSqlDatabaseSchema() map[string]*pluginsdk.Schema {
 			ValidateFunc: validation.StringInSlice([]string{
 				string(sql.DatabaseLicenseTypeBasePrice),
 				string(sql.DatabaseLicenseTypeLicenseIncluded),
+				string("None"),
 			}, false),
 		},
 
