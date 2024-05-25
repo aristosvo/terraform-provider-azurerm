@@ -74,8 +74,8 @@ func resourceNetworkWatcherFlowLog() *pluginsdk.Resource {
 			"target_resource_id": {
 				Type:         pluginsdk.TypeString,
 				ForceNew:     true,
+				Required:     true,
 				ValidateFunc: azure.ValidateResourceID,
-				ExactlyOneOf: []string{"network_security_group_id", "target_resource_id"},
 			},
 
 			"storage_account_id": {
@@ -179,6 +179,9 @@ func resourceNetworkWatcherFlowLog() *pluginsdk.Resource {
 			Deprecated:   "The property `network_security_group_id` has been superseded by `target_resource_id` and will be removed in version 5.0 of the AzureRM Provider.",
 			ExactlyOneOf: []string{"network_security_group_id", "target_resource_id"},
 		}
+		resource.Schema["target_resource_id"].Required = false
+		resource.Schema["target_resource_id"].Optional = true
+		resource.Schema["target_resource_id"].ExactlyOneOf = []string{"network_security_group_id", "target_resource_id"}
 	}
 
 	return resource
